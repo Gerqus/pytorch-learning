@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 from Logger import Logger
+from ShufflingDataLoader import ShufflingDataLoader
 
 epoch_length = 10
 learning_rate = 1e-3
@@ -68,11 +69,15 @@ test_data = datasets.CIFAR10(
     transform=transform,
 )
 
-train_loader = datautils.DataLoader(train_data, batch_size=64, shuffle=True)
-test_loader = datautils.DataLoader(test_data, batch_size=64, shuffle=False)
+train_loader = ShufflingDataLoader(train_data, batch_size=64, shuffle=True, collate_fn=lambda x: tuple(x_.to(device) for x_ in datautils.default_collate(x)))
+test_loader = ShufflingDataLoader(train_data, batch_size=64, shuffle=False, collate_fn=lambda x: tuple(x_.to(device) for x_ in datautils.default_collate(x)))
+
+print("train_loader:", train_loader.dataset)
+exit(0)
 
 # Initialize the model
 model = CIFAR10Net()
+model = torch.nn.DataParallel(model, device_ids=[0, 1], output_device=0)
 model.to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
@@ -102,9 +107,13 @@ for epoch in range(epoch_length):  # Number of epochs
 
     model.train()
     for data, target in train_loader:
+        indices = torch.randperm(data.size(0))
+        data_shuffled = data[indices]
+        target_shuffled = target[indices]
+
         optimizer.zero_grad()
-        output = model(data)
-        loss = criterion(output, target)
+        output = model(data_shuffled)
+        loss = criterion(output, target_shuffled)
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -124,7 +133,7 @@ for epoch in range(epoch_length):  # Number of epochs
     scheduler.step(valid_loss)
 
     logger.logger.info(
-        f"Epoch {epoch+1}, train loss: {train_loss}, valid loss: {valid_loss}"
+        f"Epoch {epoch+1}, train loss: {train_loss:.5f}, valid loss: {valid_loss:.5f}"
     )
 
 # Testing loop

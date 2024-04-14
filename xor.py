@@ -17,7 +17,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 hidden_layers_sizes = [4]
 
-
 # Define the model
 class XORNet(BaseNet.BaseNet):
     def __init__(self, input_dim, hidden_dims, output_dim):
@@ -35,7 +34,6 @@ class XORNet(BaseNet.BaseNet):
         x = nn.functional.relu(self.layers[0](x))
         x = nn.functional.sigmoid(self.layers[1](x))
         return nn.functional.relu(x)
-
 
 # Initialize the model
 model = XORNet(2, hidden_layers_sizes, 1)

@@ -7,7 +7,6 @@ import logging
 import torch.nn as nn
 from sizeformatter import sizeof_fmt
 
-
 class Logger:
     def __init__(self, model_name: str):
         model_name = model_name.replace(" ", "_").upper()
