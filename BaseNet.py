@@ -1,10 +1,19 @@
-import numpy.random as random
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
+
 class BaseNet(nn.Module):
-    def __init__(self, input_dim, hidden_dims, output_dim, learning_rate, scheduler_gamma, nudge_magnitude, data_precision_type = torch.float16):
+    def __init__(
+        self,
+        input_dim,
+        hidden_dims,
+        output_dim,
+        learning_rate,
+        scheduler_gamma,
+        nudge_magnitude,
+        data_precision_type=torch.float16,
+    ):
         super().__init__()
 
         self.layers = nn.ModuleList()
@@ -29,15 +38,19 @@ class BaseNet(nn.Module):
         self.layers.append(
             nn.Linear(hidden_dims[-1], output_dim, dtype=data_precision_type)
         )
-        
-        self.optimizer = optim.Adam(
-            self.parameters(), lr=learning_rate
+
+        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            self.optimizer, gamma=self.scheduler_gamma
         )
-        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=self.scheduler_gamma)
 
     def nudge(self):
         with torch.no_grad():
-            for (i, layer) in enumerate(self.layers):
-                layer.weight.data += torch.randn_like(layer.weight, dtype=self.data_precision_type) * (self.nudge_magnitude)
-                layer.bias.data += torch.randn_like(layer.bias, dtype=self.data_precision_type) * (self.nudge_magnitude)
+            for i, layer in enumerate(self.layers):
+                layer.weight.data += torch.randn_like(
+                    layer.weight, dtype=self.data_precision_type
+                ) * (self.nudge_magnitude)
+                layer.bias.data += torch.randn_like(
+                    layer.bias, dtype=self.data_precision_type
+                ) * (self.nudge_magnitude)
             self.optimizer.param_groups[0]["lr"] = self.learning_rate
